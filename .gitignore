@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 生成的数据与日志
+data/
+log/
+modelscope/*.md
+
+# 运行时残留
+RSS_Sync/
+data/news/.last_run
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
