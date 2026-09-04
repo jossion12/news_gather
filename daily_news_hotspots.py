@@ -28,25 +28,22 @@ STATE_FILE = OUTPUT_DIR / ".last_run"
 # ── 源配置 ──────────────────────────────────────────────
 
 SOURCES = [
-    {"name": "爱范儿", "url": "https://www.ifanr.com/feed", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "人人都是产品经理", "url": "https://www.woshipm.com/feed", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "博客园", "url": "https://feed.cnblogs.com/news/rss", "lang": "zh", "region": "domestic", "is_hotlist": False},
+    {"name": "澎湃新闻", "url": "https://www.thepaper.cn/rss.xml", "lang": "zh", "region": "domestic", "is_hotlist": True},
+    {"name": "中新网即时新闻", "url": "https://www.chinanews.com.cn/rss/scroll-news.xml", "lang": "zh", "region": "domestic", "is_hotlist": True},
+    {"name": "新京报", "url": "https://www.bjnews.com.cn/", "lang": "zh", "region": "domestic", "is_hotlist": True, "fetch": "html_bjnews"},
+    {"name": "36氪", "url": "https://gateway.36kr.com/api/mis/nav/home/nav/rank/hot", "lang": "zh", "region": "domestic", "is_hotlist": True, "fetch": "api_36kr"},
     {"name": "少数派", "url": "https://sspai.com/feed", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "开源中国", "url": "https://www.oschina.net/news/rss?show=industry", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "雷锋网", "url": "https://www.leiphone.com/feed", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "IT之家", "url": "https://www.ithome.com/rss/", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "Solidot", "url": "https://www.solidot.org/index.rss", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "HelloGitHub", "url": "https://www.hellogithub.com/rss", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "极客公园", "url": "https://www.geekpark.net/rss", "lang": "zh", "region": "domestic", "is_hotlist": False},
-    {"name": "MakeUseOf", "url": "https://feeds.feedburner.com/Makeuseof", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "TechCrunch", "url": "https://feeds.feedburner.com/TechCrunch/", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "Engadget", "url": "https://www.engadget.com/rss.xml", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "CNET", "url": "https://www.cnet.com/rss/news/", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "Hacker News Top", "url": "https://hnrss.org/frontpage?points=100", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "Hugging Face Blog", "url": "https://huggingface.co/blog/feed.xml", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "GitHub Blog", "url": "https://github.blog/feed/", "lang": "en", "region": "international", "is_hotlist": False},
-    {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "lang": "en", "region": "international", "is_hotlist": False},
+    {"name": "爱范儿", "url": "https://www.ifanr.com/feed", "lang": "zh", "region": "domestic", "is_hotlist": False},
+    {"name": "FT中文网", "url": "http://www.ftchinese.com/rss/news", "lang": "zh", "region": "international", "is_hotlist": False},
+    {"name": "BBC中文", "url": "https://feeds.bbci.co.uk/zhongwen/simp/rss.xml", "lang": "zh", "region": "international", "is_hotlist": True},
+    {"name": "NPR News", "url": "https://feeds.npr.org/1001/rss.xml", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "France 24", "url": "https://www.france24.com/en/rss", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "Washington Post World", "url": "https://feeds.washingtonpost.com/rss/world", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "BBC World", "url": "http://feeds.bbci.co.uk/news/world/rss.xml", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "The Guardian World", "url": "https://www.theguardian.com/world/rss", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "NYT HomePage", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "Al Jazeera", "url": "https://www.aljazeera.com/xml/rss/all.xml", "lang": "en", "region": "international", "is_hotlist": True},
+    {"name": "DW English", "url": "https://rss.dw.com/xml/rss-en-all", "lang": "en", "region": "international", "is_hotlist": True}
 ]
 
 
@@ -83,6 +80,111 @@ def parse_pub_date(pub: str) -> datetime:
     except ValueError:
         pass
     return None
+
+
+def ms_to_iso(ms: int) -> str:
+    """毫秒时间戳转 ISO 字符串（CST，秒级精度）。"""
+    return datetime.fromtimestamp(ms / 1000, tz=CST).replace(microsecond=0).isoformat()
+
+
+def fetch_36kr_hotlist(source_cfg: dict, timeout: int = 15, retries: int = 2) -> list:
+    """36氪 24小时热榜（官方 JSON API）。
+
+    www.36kr.com 全站有 WAF JS 挑战，纯 Python 无法绕过；
+    改用未受 WAF 限制的 gateway API。
+    """
+    payload = {
+        "partner_id": "web",
+        "timestamp": int(now_cst().timestamp() * 1000),
+        "param": {"rankType": 0, "platformId": 1, "siteId": 1},
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; DailyNewsBot/1.0)",
+        "Content-Type": "application/json",
+        "Origin": "https://36kr.com",
+        "Referer": "https://36kr.com/",
+    }
+
+    data = None
+    for attempt in range(retries):
+        try:
+            req = Request(source_cfg["url"], data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urlopen(req, timeout=timeout) as resp:
+                resp_data = json.loads(resp.read().decode("utf-8", errors="replace"))
+            if resp_data.get("code") == 0:
+                data = resp_data["data"]
+                break
+            print(f"    尝试 {attempt + 1}/{retries} 失败: API 返回 code={resp_data.get('code')} {resp_data.get('msg')}", flush=True)
+        except Exception as e:
+            print(f"    尝试 {attempt + 1}/{retries} 失败: {e}", flush=True)
+        if attempt < retries - 1:
+            import time
+            time.sleep(2)
+
+    items = []
+    for rank, entry in enumerate((data or {}).get("hotRankList", []), start=1):
+        material = entry.get("templateMaterial") or {}
+        title = re.sub(r"</?em>", "", material.get("widgetTitle") or "").strip()
+        if not title:
+            continue
+        item_id = entry.get("itemId")
+        pub_ms = entry.get("publishTime") or material.get("publishTime") or 0
+        items.append({
+            "title": title,
+            "link": f"https://36kr.com/p/{item_id}" if item_id else "",
+            "source": source_cfg["name"],
+            "published_at": ms_to_iso(pub_ms) if pub_ms else "",
+            "summary": "",
+            "category": "",
+            "rank": rank,
+        })
+    return items
+
+
+def fetch_bjnews_hotlist(source_cfg: dict, timeout: int = 15, retries: int = 2) -> list:
+    """新京报首页热点（HTML 抓取）。
+
+    /feed 接口已下线且全站套了移动端 JS 跳转页，改为直接抓取桌面端首页，
+    从文章 ID（雪花 ID，前 13 位为毫秒时间戳）推导发布时间。
+    """
+    html_text = fetch_rss(source_cfg["url"], timeout=timeout, retries=retries)
+    if not html_text:
+        return []
+
+    items = []
+    seen = set()
+    for m in re.finditer(
+        r'<a[^>]+href=["\']((https?://(?:www|m)\.bjnews\.com\.cn)?/detail/(\d+)\.html)["\'][^>]*>(.*?)</a>',
+        html_text, re.S,
+    ):
+        url, _, detail_id, inner = m.groups()
+        if url.startswith("/"):
+            url = "https://www.bjnews.com.cn" + url
+        url = url.replace("https://m.bjnews.com.cn", "https://www.bjnews.com.cn")
+        if url in seen:
+            continue
+        title = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", inner)).strip()
+        if len(title) < 6:
+            continue
+        seen.add(url)
+
+        pub = ""
+        if len(detail_id) >= 13:
+            try:
+                pub = ms_to_iso(int(detail_id[:13]))
+            except (ValueError, OSError, OverflowError):
+                pass
+
+        items.append({
+            "title": title,
+            "link": url,
+            "source": source_cfg["name"],
+            "published_at": pub,
+            "summary": "",
+            "category": "",
+            "rank": len(items) + 1,
+        })
+    return items
 
 
 def fetch_rss(url: str, timeout: int = 15, retries: int = 2) -> str:
@@ -245,22 +347,31 @@ def main():
 
     for cfg in SOURCES:
         name = cfg["name"]
+        fetch_type = cfg.get("fetch", "rss")
         print(f"[RSS] 抓取: {name}", flush=True)
 
-        xml_text = fetch_rss(cfg["url"])
-        if not xml_text:
-            print(f"  ✗ 抓取失败", flush=True)
-            all_sources.append({
-                "source": name,
-                "source_type": "rss",
-                "language": cfg["lang"],
-                "region": cfg["region"],
-                "item_count": 0,
-                "items": [],
-            })
-            continue
+        if fetch_type == "rss":
+            xml_text = fetch_rss(cfg["url"])
+            if not xml_text:
+                print(f"  ✗ 抓取失败", flush=True)
+                all_sources.append({
+                    "source": name,
+                    "source_type": "rss",
+                    "language": cfg["lang"],
+                    "region": cfg["region"],
+                    "item_count": 0,
+                    "items": [],
+                })
+                continue
+            items = parse_rss_items(xml_text, cfg)
+        elif fetch_type == "api_36kr":
+            items = fetch_36kr_hotlist(cfg)
+        elif fetch_type == "html_bjnews":
+            items = fetch_bjnews_hotlist(cfg)
+        else:
+            print(f"  ✗ 未知抓取类型: {fetch_type}", flush=True)
+            items = []
 
-        items = parse_rss_items(xml_text, cfg)
         items = filter_by_time(items, cutoff)
         items = dedup(items)
 
